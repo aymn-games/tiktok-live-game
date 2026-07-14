@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>روليت التيك توك التفاعلية</title>
+    <!-- استدعاء مكتبة السوكيت للربط مع السيرفر المحلي -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        :root {
+            --primary: #fe2c55;
+            --secondary: #25f4ee;
+            --dark: #121212;
+            --card-bg: #1e1e1e;
+            --text: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .panel {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            flex: 1;
+            min-width: 280px;
+            border: 1px solid #333;
+        }
+        .wheel-container {
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        h2 { color: var(--secondary); margin-top: 0; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 14px; }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #2a2a2a;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            background: #252525;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc; transition: .4s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: var(--secondary); color: var(--dark); }
+        .btn-outline { background: transparent; color: #aaa; border: 1px solid #444; }
+
+        .wheel-graphic {
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            border: 10px solid var(--secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            font-weight: bold;
+            font-size: 20px;
+            background: conic-gradient(from 0deg, #ff4500 0deg 90deg, #da70d6 90deg 180deg, #20b2aa 180deg 270deg, #ffa500 270deg 360deg);
+            box-shadow: 0 0 20px rgba(37, 244, 238, 0.3);
+            transition: transform 4s cubic-bezier(0.1, 0.8, 0.1, 1);
+        }
+        .pointer {
+            position: absolute;
+            top: -20px;
+            width: 0; height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid var(--primary);
+            z-index: 10;
+        }
+        .list-box {
+            background: #151515;
+            height: 150px;
+            overflow-y: auto;
+            border-radius: 6px;
+            padding: 10px;
+            border: 1px solid #333;
+        }
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            border-bottom: 1px solid #222;
+            font-size: 14px;
+        }
+        .player-num { color: var(--secondary); font-weight: bold; }
+        .status-bar {
+            font-size: 13px;
+            color: #999;
+            margin-top: -10px;
+            margin-bottom: 15px;
+            min-height: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="authBar" style="width:100%; max-width:1200px; display:flex; justify-content:space-between; align-items:center; background:#1e1e1e; border:1px solid #333; border-radius:8px; padding:8px 16px; margin-bottom:10px; font-size:13px;">
+        <span id="authUserLabel">جاري التحقق من الدخول...</span>
+        <a href="/auth/logout" style="color:#fe2c55; text-decoration:none; font-weight:bold;">🚪 تسجيل الخروج</a>
+    </div>
+
+    <h1>🎮 لوحة تحكم ألعاب التيك توك التفاعلية</h1>
+
+    <div class="container">
+        <div class="panel">
+            <h2>⚙️ إعدادات البث</h2>
+            <div class="input-group">
+                <label>رابط السيرفر (Backend URL):</label>
+                <input type="text" id="serverUrl" placeholder="اتركه فارغاً لاستخدام نفس السيرفر الحالي">
+            </div>
+            <div class="input-group">
+                <label>اسم مستخدم التيك توك (Username):</label>
+                <input type="text" id="tiktokUser" placeholder="username بدون @">
+            </div>
+            <div class="input-group">
+                <label>الكلمة السرية لدخول الجولة:</label>
+                <input type="text" id="secretWord" placeholder="سجل">
+            </div>
+            <div class="input-group">
+                <label>كلمة الإنعاش (يكتبها اللاعب المقصى):</label>
+                <input type="text" id="reviveWord" placeholder="انعاش">
+            </div>
+            <div id="connectionStatus" class="status-bar">غير متصل</div>
+
+            <hr style="border-color: #333; margin: 20px 0;">
+
+            <div class="toggle-group">
+                <span>🌹 العودة بالهدية (وردة) بعد الإقصاء</span>
+                <label class="switch">
+                    <input type="checkbox" id="giftReturnToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="input-group">
+                <label>الحد الأقصى لمرات العودة بالوردة (لكل لاعب):</label>
+                <input type="number" id="maxReturns" value="2" min="1">
+            </div>
+
+            <div class="toggle-group">
+                <span>✨ تفعيل ميزة إنعاش لاعب مقصى بالكلمة</span>
+                <label class="switch">
+                    <input type="checkbox" id="reviveToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="input-group">
+                <label>الحد الأقصى لمرات الاستفادة من الإنعاش (لكل لاعب):</label>
+                <input type="number" id="maxRevives" value="1" min="1">
+            </div>
+
+            <button class="btn-primary" onclick="startTikTokConnection()">🔌 بدء الاتصال بالبث</button>
+            <button class="btn-outline" onclick="stopTikTokConnection()">⛔ قطع الاتصال</button>
+            <button class="btn-secondary" onclick="startRound()">🎲 بدء الجولة وتدوير العجلة</button>
+        </div>
+
+        <div class="wheel-container panel">
+            <div class="pointer"></div>
+            <div class="wheel-graphic" id="wheel">روليت</div>
+            <h3 style="margin-top: 30px;" id="winnerDisplay">الفائز الحالي: --</h3>
+        </div>
+
+        <div class="panel">
+            <h2>👥 القبائل واللاعبين</h2>
+            <label>المشاركون في الجولة (أرقام عشوائية فريدة):</label>
+            <div class="list-box" id="playersList"></div>
+
+            <h2 style="margin-top: 20px; color: var(--primary);">💀 قائمة الإقصاء</h2>
+            <div class="list-box" id="eliminatedList"></div>
+        </div>
+    </div>
+
+    <script>
+        // السوكيت يُنشأ عند الضغط على "بدء الاتصال بالبث" باستخدام الرابط المكتوب في الحقل
+        // (بدل رابط ثابت)، عشان يشتغل سواء محلياً أو على استضافة عامة بعد نشر السيرفر.
+        let socket = null;
+
+        let players = [];
+        let eliminated = [];
+        let currentWinner = null;
+        let returnCounts = {};   // عدد مرات العودة بالوردة لكل لاعب
+        let reviveCounts = {};   // عدد مرات استخدام الإنعاش لكل لاعب
+        let usedNumbers = new Set();
+
+        // تحميل بيانات صاحب الجلسة الحالية (تم تسجيل دخوله عبر TikTok Login Kit)
+        fetch('/auth/me', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                const label = document.getElementById('authUserLabel');
+                if (data.authenticated && data.user) {
+                    label.innerText = `✅ مسجل الدخول كـ: ${data.user.displayName || data.user.openId}`;
+                } else {
+                    label.innerText = '⚠️ غير مسجل الدخول';
+                    window.location.href = '/auth/login';
+                }
+            })
+            .catch(() => {
+                document.getElementById('authUserLabel').innerText = '⚠️ تعذر التحقق من الجلسة';
+            });
+
+        function generateUniqueNumber() {
+            let num;
+            do {
+                num = Math.floor(Math.random() * 90) + 10;
+            } while (usedNumbers.has(num));
+            usedNumbers.add(num);
+            return num;
+        }
+
+        function releaseNumber(num) {
+            usedNumbers.delete(num);
+        }
+
+        function attachSocketEvents(s) {
+            // حالة الاتصال بسيرفر الواجهة نفسه (وليس بث التيك توك)
+            s.on('connect_error', (err) => {
+                if (err.message === 'unauthorized') {
+                    setStatus('⚠️ انتهت جلستك، جاري تحويلك لتسجيل الدخول...', '#fe2c55');
+                    window.location.href = '/auth/login';
+                    return;
+                }
+                setStatus(`⚠️ تعذر الوصول للسيرفر (${err.message}). تأكد إن السيرفر شغّال والرابط صحيح.`, '#fe2c55');
+            });
+            s.on('disconnect', () => {
+                setStatus('⚠️ انقطع الاتصال بالسيرفر.', '#fe2c55');
+            });
+
+            // 1. حالة الاتصال ببث التيك توك (نجاح/فشل/انقطاع/إعادة اتصال)
+            s.on('tiktok_status', (data) => {
+                setStatus(data.message, data.success ? '#25f4ee' : '#fe2c55');
+            });
+
+            // 2. استقبال لاعب جديد كَتب الكلمة السرية بالشات
+            s.on('new_player', (data) => {
+                if (!players.some(p => p.name === data.name) && !eliminated.some(e => e.name === data.name)) {
+                    players.push({ name: data.name, num: generateUniqueNumber() });
+                    updatePlayersUI();
+                }
+            });
+
+            // 3. استقبال طلب إقصاء (إذا الفائز كتب رقم لاعب آخر في الشات)
+            s.on('elimination_request', (data) => {
+                if (currentWinner && data.name === currentWinner.name) {
+                    const targetIndex = players.findIndex(p => p.num === data.targetNum);
+                    if (targetIndex !== -1) {
+                        let kickedPlayer = players.splice(targetIndex, 1)[0];
+                        releaseNumber(kickedPlayer.num);
+                        eliminated.push(kickedPlayer);
+                        updatePlayersUI();
+                        setStatus(`💀 تم إقصاء اللاعب رقم #${data.targetNum} بناءً على طلب الفائز.`, '#fe2c55');
+                    }
+                }
+            });
+
+            // 4. العودة التلقائية بالوردة بعد الإقصاء
+            s.on('gift_revive', (data) => {
+                const isGiftEnabled = document.getElementById('giftReturnToggle').checked;
+                const maxReturns = parseInt(document.getElementById('maxReturns').value, 10) || 0;
+
+                if (isGiftEnabled) {
+                    const elimIndex = eliminated.findIndex(e => e.name === data.name);
+                    if (elimIndex !== -1) {
+                        let currentCount = returnCounts[data.name] || 0;
+                        if (currentCount < maxReturns) {
+                            returnCounts[data.name] = currentCount + 1;
+                            let revivedPlayer = eliminated.splice(elimIndex, 1)[0];
+                            revivedPlayer.num = generateUniqueNumber();
+                            players.push(revivedPlayer);
+                            updatePlayersUI();
+                            setStatus(`🌹 أرسل ${data.name} وردة وعاد للعبة بالرقم الجديد #${revivedPlayer.num}!`, '#25f4ee');
+                        }
+                    }
+                }
+            });
+
+            // 5. ميزة إنعاش لاعب مقصى عند كتابته لكلمة الإنعاش في الشات
+            s.on('revive_request', (data) => {
+                const isReviveEnabled = document.getElementById('reviveToggle').checked;
+                const maxRevives = parseInt(document.getElementById('maxRevives').value, 10) || 0;
+
+                if (isReviveEnabled) {
+                    const elimIndex = eliminated.findIndex(e => e.name === data.name);
+                    if (elimIndex !== -1) {
+                        let currentCount = reviveCounts[data.name] || 0;
+                        if (currentCount < maxRevives) {
+                            reviveCounts[data.name] = currentCount + 1;
+                            let revivedPlayer = eliminated.splice(elimIndex, 1)[0];
+                            revivedPlayer.num = generateUniqueNumber();
+                            players.push(revivedPlayer);
+                            updatePlayersUI();
+                            setStatus(`✨ ${data.name} استخدم الإنعاش وعاد بالرقم #${revivedPlayer.num}!`, '#25f4ee');
+                        }
+                    }
+                }
+            });
+        }
+
+        function setStatus(message, color) {
+            const el = document.getElementById('connectionStatus');
+            el.innerText = message;
+            el.style.color = color || '#999';
+        }
+
+        function startTikTokConnection() {
+            const serverUrlInput = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
+            const serverUrl = serverUrlInput || window.location.origin;
+            const user = document.getElementById('tiktokUser').value.trim().replace(/^@/, '');
+            const word = document.getElementById('secretWord').value.trim();
+            const reviveWord = document.getElementById('reviveWord').value.trim();
+            if (!user || !word) {
+                alert("الرجاء إدخال اليوزر والكلمة السرية أولاً!");
+                return;
+            }
+
+            // لو فيه اتصال سابق، اقفله أول قبل ما نفتح واحد جديد
+            if (socket) {
+                socket.removeAllListeners();
+                socket.disconnect();
+            }
+
+            setStatus('⏳ جاري الاتصال بالسيرفر...', '#999');
+            socket = io(serverUrl, {
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 2000,
+                withCredentials: true
+            });
+            attachSocketEvents(socket);
+
+            socket.on('connect', () => {
+                setStatus('⏳ متصل بالسيرفر، جاري الاتصال بالبث...', '#999');
+                socket.emit('connect_tiktok', { username: user, secretWord: word, reviveWord });
+            });
+        }
+
+        function stopTikTokConnection() {
+            if (socket) {
+                socket.emit('disconnect_tiktok');
+                socket.disconnect();
+            }
+            setStatus('تم قطع الاتصال.', '#999');
+        }
+
+        function startRound() {
+            if (players.length === 0) {
+                alert("لا يوجد لاعبون مسجلون في القائمة حالياً لتشغيل العجلة!");
+                return;
+            }
+
+            const wheel = document.getElementById('wheel');
+            const randomDegree = Math.floor(Math.random() * 360) + 1800;
+            wheel.style.transform = `rotate(${randomDegree}deg)`;
+
+            setTimeout(() => {
+                currentWinner = players[Math.floor(Math.random() * players.length)];
+                document.getElementById('winnerDisplay').innerText = `الفائز الحالي: ${currentWinner.name} (رقم الحظ: ${currentWinner.num})`;
+                alert(`🎯 الفائز: ${currentWinner.name}! يمكنه الآن كتابة رقم اللاعب المراد إقصائه في الشات.`);
+            }, 4000);
+        }
+
+        function updatePlayersUI() {
+            const pList = document.getElementById('playersList');
+            pList.innerHTML = '';
+            players.forEach(p => {
+                pList.innerHTML += `<div class="player-item"><span>${p.name}</span><span class="player-num">#${p.num}</span></div>`;
+            });
+
+            const eList = document.getElementById('eliminatedList');
+            eList.innerHTML = '';
+            eliminated.forEach(e => {
+                eList.innerHTML += `<div class="player-item" style="color: #777;"><span style="text-decoration: line-through;">${e.name}</span><span>❌ مقصى</span></div>`;
+            });
+        }
+    </script>
+</body>
+</html>

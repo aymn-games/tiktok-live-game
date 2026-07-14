@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - Ayman Games</title>
+    <style>
+        :root {
+            --primary: #fe2c55;
+            --secondary: #25f4ee;
+            --dark: #121212;
+            --card-bg: #1e1e1e;
+            --text: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid #333;
+            border-radius: 14px;
+            padding: 36px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+        p.subtitle {
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+        .btn-login {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .privacy-note {
+            margin-top: 24px;
+            background: #151515;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: right;
+            font-size: 13px;
+            line-height: 1.9;
+            color: #ccc;
+        }
+        .privacy-note .title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--secondary);
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .privacy-note ul {
+            margin: 0;
+            padding-inline-start: 20px;
+        }
+        .privacy-note li {
+            margin-bottom: 6px;
+        }
+        .error-box {
+            background: rgba(254, 44, 85, 0.15);
+            border: 1px solid var(--primary);
+            color: #ffb3c1;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🎮 Ayman Games</h1>
+        <p class="subtitle">سجّل دخولك بحساب تيك توك الخاص بك للوصول للوحة التحكم</p>
+
+        <div class="error-box" id="errorBox"></div>
+
+        <a href="/auth/login" class="btn-login">تسجيل الدخول عبر TikTok</a>
+
+        <div class="privacy-note">
+            <div class="title">🔒 ملاحظة الخصوصية</div>
+            <ul>
+                <li>عند الضغط على الزر أعلاه، بيتم تحويلك مباشرة لصفحة تسجيل الدخول الرسمية عند تيك توك.</li>
+                <li>تكتب اسم المستخدم وكلمة المرور الخاصة فيك <strong>داخل موقع تيك توك نفسه فقط</strong>، وليس داخل هذا الموقع.</li>
+                <li>نحن لا نرى، ولا نطّلع، ولا نخزّن كلمة مرورك أو بيانات حسابك الخاصة في أي وقت — هذا تقنياً غير ممكن أصلاً في نظام OAuth 2.0 الرسمي المستخدم هنا.</li>
+                <li>كل اللي نستلمه بعد موافقتك هو تأكيد هوية بسيط (اسم العرض والصورة الرمزية العامة) للتحقق إنك صاحب الحساب المخوّل بالدخول للوحة التحكم.</li>
+                <li>تقدر تسحب هذا التصريح في أي وقت من إعدادات حسابك في تيك توك (Settings → Security → Manage app permissions).</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // عرض رسالة خطأ لو رجعنا من /auth/callback بفشل
+        const params = new URLSearchParams(window.location.search);
+        const err = params.get('error');
+        if (err) {
+            const box = document.getElementById('errorBox');
+            box.style.display = 'block';
+            box.innerText = 'تعذر تسجيل الدخول: ' + decodeURIComponent(err);
+        }
+    </script>
+</body>
+</html>
